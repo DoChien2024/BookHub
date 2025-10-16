@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Đăng nhập</title>
+  <link rel="stylesheet" th:href="@{/css/argon-lite.css}" href="/css/argon-lite.css">
+</head>
+<body class="shell">
+<h2>Đăng nhập</h2>
+
+<form id="loginForm" class="card panel">
+  <label>
+    Tên đăng nhập
+    <input id="l-username" name="username" autocomplete="username" required />
+  </label>
+
+  <label>
+    Mật khẩu
+    <input id="l-password" name="password" type="password" autocomplete="current-password" required />
+  </label>
+
+  <div class="chips">
+    <button id="loginBtn" type="submit" class="chip primary">Đăng nhập</button>
+    <a class="chip ghost" th:href="@{/register}" href="/register">Chưa có tài khoản? Đăng ký</a>
+    <a class="chip" th:href="@{/}" href="/">Về trang chính</a>
+  </div>
+</form>
+
+<div id="toastContainer"></div>
+
+<script th:src="@{/js/auth.js}" src="/js/auth.js"></script>
+<script th:inline="none">
+
+  document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (typeof login === 'function') login();
+  });
+</script>
+</body>
+</html>

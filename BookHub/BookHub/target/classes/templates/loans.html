@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Phiếu mượn của tôi</title>
+    <link rel="stylesheet" th:href="@{/css/argon-lite.css}" href="/css/argon-lite.css">
+    <style>.hidden{display:none!important}</style>
+</head>
+<body class="shell">
+<div class="shell-header">
+    <h2>Phiếu mượn của tôi</h2>
+    <div class="toolbar">
+        <a class="chip" th:href="@{/}" href="/">Trang chính</a>
+        <div id="authArea" class="chips"></div>
+    </div>
+</div>
+
+<div class="card panel">
+    <div class="table-wrap">
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th><th>Sách</th><th>Mượn lúc</th><th>Hạn trả</th><th>Trạng thái</th><th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody id="tbody"><tr><td colspan="6" class="muted">Đang tải…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script th:src="@{/js/auth.js}" src="/js/auth.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        await renderAuthArea();
+
+        const r = await fetch('/api/loans?mine=true', { credentials: 'include', cache: 'no-store' });
+        const pg = await r.json();
+        const items = (pg.content || []);
+
+        const rows = items.map(l => `
+        <tr>
+          <td>${l.id}</td>
+          <td>${l.book?.title ?? ('#'+l.book?.id)}</td>
+          <td>${new Date(l.borrowedAt).toLocaleString()}</td>
+          <td>${new Date(l.dueAt).toLocaleString()}</td>
+          <td>${l.status}</td>
+          <td>
+            ${l.status === 'IN_PROGRESS'
+            ? `<div class="chip danger" data-act="return" data-id="${l.id}">Trả</div>`
+            : ''
+        }
+          </td>
+        </tr>
+      `).join('');
+
+        document.getElementById('tbody').innerHTML =
+            rows || `<tr><td colspan="6" class="muted">Chưa có phiếu mượn</td></tr>`;
+
+        document.getElementById('tbody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-act="return"]');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            const res = await fetch(`/api/loans/${id}/return`, { method: 'POST', credentials: 'include' });
+            if (res.ok) { toast('Đã trả sách'); location.reload(); }
+            else { toast('Trả thất bại', false); }
+        });
+    });
+</script>
+</body>
+</html>

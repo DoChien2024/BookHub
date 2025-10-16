@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Thư viện sách · Dashboard</title>
+
+    <link rel="stylesheet" th:href="@{/css/argon-lite.css}" href="/css/argon-lite.css"/>
+
+    <style>
+        .hidden{display:none!important}
+        .stock-badge{font-size:.85em; padding:.15rem .45rem; border-radius:.5rem; background:rgba(255,255,255,.08); border:1px solid var(--border)}
+        .chip[aria-busy="true"]{opacity:.6;pointer-events:none}
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">Draw Library</div>
+
+    < Khu vực đăng nhập/đăng ký/đăng xuất >
+    <div id="authArea" class="chips">
+        <a class="chip ghost" href="/login" th:href="@{/login}">Đăng nhập</a>
+        <a class="chip" href="/register" th:href="@{/register}">Đăng ký</a>
+    </div>
+</header>
+
+<main class="wrapper">
+    <div class="hero-art">
+        <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop" alt="bg">
+        <div class="overlay"></div>
+    </div>
+
+    <! KHUNG CHÍNH >
+    <section class="shell card glass-strong">
+        <h2 style="margin-bottom: 18px;">Thư Viện Sách</h2>
+
+        <div class="shell-body" style="display:grid;grid-template-columns:1fr 1.2fr;gap:16px">
+            <form id="quickForm" class="panel card" onsubmit="return false;">
+                <label>Tiêu đề / Mã sách
+                    <input id="title" placeholder="VD: DSA for Beginners"/>
+                </label>
+                <label>Tác giả
+                    <input id="author" placeholder="VD: Nguyễn Văn A"/>
+                </label>
+                <label>Thể loại / Ghi chú
+                    <textarea id="category" rows="3" placeholder="VD: Khoa học, CNTT"></textarea>
+                </label>
+                <div class="chips">
+                    <div class="chip primary" id="addBtn">+ Thêm sách</div>
+                    <div class="chip ghost" id="clearFormBtn">Xóa form</div>
+                </div>
+            </form>
+
+
+            <div class="card">
+                <div class="section-title">Danh sách các sách</div>
+
+
+                <input id="search" class="search" placeholder="Tìm theo tiêu đề, tác giả..." style="margin-bottom:12px"/>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th id="th-check-all" style="width:40px">
+                                <input type="checkbox" id="checkAll"/>
+                            </th>
+                            <th>Mã/Tiêu đề</th>
+                            <th>Tác giả</th>
+                            <th>Thể loại</th>
+                            <th>Tồn kho</th>
+                            <th id="th-actions" style="width:220px">Hành động</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbody">
+                        <tr><td colspan="6" class="muted">Đang tải…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="chips" style="margin-top:12px">
+                    <div class="chip ghost" id="exportBtn">Xuất CSV</div>
+                    <div class="chip danger" id="deleteSelectedBtn" disabled>Xóa đã chọn</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="toastContainer"></div>
+
+<script th:src="@{/js/auth.js}" src="/js/auth.js"></script>
+<script th:src="@{/js/argon-lite.js}" src="/js/argon-lite.js"></script>
+<script th:inline="none">
+    (async () => {
+        const area = document.getElementById('authArea');
+        try {
+            const info = await me(); // từ auth.js
+            window.__auth = info || { authenticated:false };
+
+            if (info && info.authenticated) {
+                area.innerHTML = `
+          <div class="chip ghost">Xin chào, ${info.username} (${info.role})</div>
+          <div class="chip danger" id="logoutBtn">Đăng xuất</div>
+        `;
+                document.getElementById('logoutBtn')?.addEventListener('click', () => logout());
+            } else {
+                area.innerHTML = `
+          <a class="chip ghost" href="/login" th:href="@{/login}">Đăng nhập</a>
+          <a class="chip" href="/register" th:href="@{/register}">Đăng ký</a>
+        `;
+            }
+
+            updateWriteUI();
+        } catch {
+            window.__auth = { authenticated:false };
+            updateWriteUI();
+        }
+    })();
+
+    function updateWriteUI(){
+        const canWrite = !!(window.__auth && window.__auth.authenticated);
+        document.getElementById('addBtn')?.classList.toggle('hidden', !canWrite);
+        document.getElementById('deleteSelectedBtn')?.classList.toggle('hidden', !canWrite);
+        document.getElementById('th-check-all')?.classList.toggle('hidden', !canWrite);
+        document.getElementById('th-actions')?.classList.toggle('hidden', !canWrite);
+
+        document.querySelectorAll('#tbody .rowchk')?.forEach(el => {
+            el.closest('td')?.classList.toggle('hidden', !canWrite);
+        });
+        document.querySelectorAll('#tbody td[data-col="actions"]')?.forEach(td => {
+            td.classList.toggle('hidden', !canWrite);
+        });
+    }
+
+    const moTarget = document.getElementById('tbody');
+    if (moTarget) {
+        new MutationObserver(() => updateWriteUI()).observe(moTarget, {childList:true,subtree:true});
+    }
+
+    (async function init(){
+        if (typeof load === 'function') await load();
+        document.getElementById('search')?.addEventListener('input', () => { if (typeof render==='function') render(); });
+        document.getElementById('addBtn')?.addEventListener('click', async () => {
+            if(!(window.__auth && window.__auth.authenticated)){
+                toast('Vui lòng đăng nhập để thêm sách', false);
+                location.href = '/login';
+                return;
+            }
+            const t = document.getElementById('title')?.value?.trim();
+            const a = document.getElementById('author')?.value?.trim();
+            const c = document.getElementById('category')?.value?.trim();
+            if (!t) { toast('Vui lòng nhập Tiêu đề', false); return; }
+
+            try {
+                const res = await fetch('/api/books', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title: t, author: a, category: c}),
+                    credentials: 'include'
+                });
+                if (!res.ok) throw 0;
+                toast('Đã thêm sách');
+                document.getElementById('quickForm')?.reset();
+                if (typeof load === 'function') await load();
+            } catch {
+                toast('Thêm thất bại', false);
+            }
+        });
+        document.getElementById('clearFormBtn')?.addEventListener('click', () => document.getElementById('quickForm')?.reset());
+        document.getElementById('exportBtn')?.addEventListener('click', () => window.exportCsv && exportCsv());
+    })();
+</script>
+
+</body>
+</html>

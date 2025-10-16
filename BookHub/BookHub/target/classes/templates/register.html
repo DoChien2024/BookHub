@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Đăng ký</title>
+  <link rel="stylesheet" th:href="@{/css/argon-lite.css}" href="/css/argon-lite.css">
+</head>
+<body class="shell">
+<h2>Đăng ký</h2>
+
+<form id="registerForm" class="card panel">
+  <label>
+    Tên đăng nhập
+    <input id="r-username" name="username" autocomplete="username" minlength="3" required />
+  </label>
+
+  <label>
+    Email
+    <input id="r-email" name="email" type="email" autocomplete="email" required />
+  </label>
+
+  <label>
+    Mật khẩu
+    <input id="r-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+  </label>
+
+  <div class="chips">
+    <button id="registerBtn" type="submit" class="chip primary">Tạo tài khoản</button>
+    <a class="chip ghost" th:href="@{/login}" href="/login">Đã có tài khoản? Đăng nhập</a>
+    <a class="chip" th:href="@{/}" href="/">Về trang chính</a>
+  </div>
+</form>
+
+<div id="toastContainer"></div>
+
+<script th:src="@{/js/auth.js}" src="/js/auth.js"></script>
+<script th:inline="none">
+  // Cho phép bấm Enter để đăng ký
+  document.getElementById('registerForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (typeof register === 'function') register();
+  });
+</script>
+</body>
+</html>
